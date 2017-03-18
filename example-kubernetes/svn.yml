@@ -1,38 +1,35 @@
-apiVersion: extensions/v1beta1
-kind: Deployment
+apiVersion: apps/v1beta1
+kind: StatefulSet
 metadata:
   name: svn
-  # labels applied automatically from pod template
 spec:
+  serviceName: "svn"
   replicas: 1
-  # selector applied automatically from pod template
   template:
     metadata:
       labels:
         app: svn
     spec:
-      volumes:
-      - name: svn
-        persistentVolumeClaim:
-          claimName: svn
+      terminationGracePeriodSeconds: 10
       containers:
       - name: svn
-        image: solsson/svn-httpd:1.8.16
+        image: solsson/rweb-httpd@sha256:676f12d8125fc5a8a50bb21778628b831a4052c66d1508b587433424683708db
         ports:
-        - containerPort: 80
+        - name: http
+          containerPort: 80
+        env:
+        - name: AUTHN
+          value: anon
+        - name: ADMIN_REST_ACCESS
+          value: "true"
         volumeMounts:
-        - name: svn
+        - name: datadir
           mountPath: /svn
-      # TODO rweb container
-      - name: indexing
-        image: solsson/repos-indexing-svnlook@sha256:52321e6196324f188bd18da8ee31a0a388b528bbfe74c8899ae995391d727c82
-        args:
-        - -d
-        - /svn
-        - -e
-        - http://svn/svn/
-        - -s
-        - http://solr:8983/solr/
-        volumeMounts:
-        - name: svn
-          mountPath: /svn
+      - name: rweb
+        image: solsson/rweb@sha256:c39b35eb6dc65c1baa165eb6635f16375354328a7edd481927ad12db4a89b6fc
+        ports:
+        - name: rweb
+          containerPort: 9000
+  volumeClaimTemplates:
+  - metadata:
+      name: datadir
